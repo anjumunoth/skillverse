@@ -1,0 +1,230 @@
+https://survey.zohopublic.com/zs/qDDFuh
+
+
+
+
+
+
+Participants who have not got the credentials
+Lakshmi Kiran veeravalli 
+Premdas Chavan
+Bala Gurappa Duggiveni
+KUMAR, ABHISHEK
+Nikhil Agrawal
+
+
+
+sudo systemctl status mongod
+
+Start the server :
+sudo systemctl start mongod
+
+Stop the server :
+sudo systemctl stop mongod
+
+
+To start the shell as a mongo client : mongosh
+
+
+ Create a db and switch over to that db : use database name
+ use skillverse
+ 
+ If the db exists , it will switch over only
+ 
+ 
+ 1. Is the db name case sensitive
+ 2. use SkillVerse -- create a new db or will it switch over to an existing one with the same name but different case
+ 
+ 
+ RDBMS and Mongodb
+ database -- database
+ table -- collection
+ record/row -- document
+ column headings -- keys
+ 
+ document based db -- way the records are stored -- document -- BSON -- Binary json
+ Document -- enclosed  -- {} curly braces
+ Key: value pairs
+ Each key value pair is seperated by a comma
+ 
+ {"empId":101,"empName":"sara",salary:123.90}
+ 
+ insert into employee values(101,"sara",123.90)
+ db.employee.insertOne({"empId":101,"empName":"sara",salary:123.90})
+ Fields for empId : 101 : Four
+ 
+ 
+ select * from employee
+ db.employee.find();
+ 
+ db.employee.insertOne({"empId":101,"empName":"sara",salary:123.90});//true
+ db.employee.insertOne({"empId":102,"empName":"tara",salary:124.90});//true
+ db.employee.insertOne({"empId":103,"empName":"tara",salary:124.90});//true because no unique constraint on empName
+ db.employee.insertOne({"empId":103,"empName":"tara",salary:124.90});//true because no unique constraint on empId
+ db.employee.insertOne({"empId":104,"empName":"tara",_id:104});//true
+ db.employee.insertOne({"empId":104,"empName":"tara",_id:104});//false because the _id is not unique 
+ db.employee.insertOne({"empId":105,"empName":"tara",_id:104});//false because the _id is not unique 
+ db.employee.insertOne({"empId":105,"empName":"tara",_id:null});//_id is auto generated
+ 
+ 
+ 
+ 
+ _id
+ 	-- Auto generated with a unique value of Object Id data type whenever a document is inserted without an _id field
+  -- Insert document can also have an _id . if yes, its not auto generated
+  -- By default -- ObjectId
+  	-- 12 byte identifier
+    		-- 4 byte timestamp
+        -- 5 byte machine id and process id
+        -- 3 byte incremental counter
+  -- Compatible data type : All other than array and regular expression and undefined
+  -- Whenever a collection is created, implicitly creates a unique index on the _id field
+  
+  
+  
+Document : {}
+Array :[]
+Insert Many : 
+db.employee.insertMany([
+{"empId":201,"salary":4560,"empName":"ram"},
+{"empId":202,"salary":1234,"empName":"shyam"},
+{"empId":203,"salary":1234568,"empName":"sita"},
+])
+
+// _id : 104 already exists in the db
+db.employee.insertMany([
+{"empId":210,"salary":4560,"empName":"gita"},
+{"empId":211,"salary":1234,"empName":"shyam",_id:104},
+{"empId":212,"salary":1234568,"empName":"rita"},
+])
+
+// How many documents will be inserted
+1 insert -- 210; 211 will fail; since failure stop at failure
+
+
+Select :
+db.employee.find({whereCondition},{projectCondition})
+
+
+select * from employee 
+db.employee.find()
+
+select * from employee where salary = 1000; // use relational operators
+db.employee.find({salary:4560});// n documents where n can 0 or greater
+
+db.employee.find({salary:{$gt:5000}});// all documents which have a salary greater than 5000
+
+$gt, $lt, $gte, $lte, $eq, $ne
+
+select empId from employee
+
+select empId,empName from employee where salary > 1000; // use relational operators
+
+db.employee.insertMany([
+{"empId":301,"salary":1000,"empName":"ram"},
+{"empId":302,"empName":"shyam"},
+{"empId":303,"salary":123456,"empName":"sita"},
+]);
+
+db.employee.find({salary:{$gt:1000}});//303
+db.employee.find({salary:{$ne:1000}});// 2 records(302,303); 
+// behind the hood : 302 and 303; ne : operator : first do the equal to matching : matches salary as 1000 :1. Total no of docs : 3; 3-1 =2 all 2 docs will be coming 
+
+$ne : match the docs which match the criteria and also the docs where the field is not present
+db.employee.find({salary:{$lt:1000}});// no rows
+
+
+
+// Logical operators
+$and, $or ,$not
+
+get all the docs where salary is greater 1000 and empName is "sita"
+db.employee.find(
+	{
+		$and:
+    	[
+      	{salary:{$gt:1000}},
+        {empName:"sita"}
+      ]
+	}
+)
+
+get all the docs where salary is greater than 1000 or empName is "sara"
+db.employee.find(
+	{
+		$or:
+    	[
+      	{salary:{$gt:1000}},
+        {empName:"sara"}
+      ]
+	}
+)
+
+// is null
+// between
+// In 
+// Regular Expression
+// Sort
+// Grouping
+// aggregate operators
+// exists
+
+
+
+
+Trouble shooting
+1. db.emp.find();// no docs ; no creation of emp 
+2. db.employee.find({sal:{$gt:1000}});//no output ; no error 
+3. db.employee.find(
+	{
+		$or:
+    	[
+      	{salary:{$gt:1000},
+        {empName:"sara"}
+      ]
+	}
+);// syntatical error ; 
+
+4. show dbs; // will it show skillverse -- yes
+5. db.empoyee.insertOne({_id:104, empId:501});// create a new collection with the typo collection name empoyee and insert the document
+6. db.employee.insertOne({studentId:101,standard:"first"});// true; mongodb is flexible schema
+
+
+
+
+
+
+get all the docs which belong to state ="MA"
+{state:"MA"}
+
+get all the docs which pop >5000
+{pop:{$gt:5000
+
+}}
+
+
+
+
+
+  
+  
+  
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+

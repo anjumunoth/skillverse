@@ -1,0 +1,131 @@
+Why Mongodb ? 
+	-- Document based database/ non relational
+		-- flexible schema
+			-- no 2 documents of the same collection need to have the same schema
+			
+	-- open source
+	-- less cost
+	-- compatible with all OS
+	-- customer request/project requirements ; Knowledge 
+	-- not rigid / flexible -- queries
+	-- better performance than relational
+		-- no need for complex joins  -- Embedded Documents and referenced documents
+		-- query speed -- indexes -- 
+		-- latency
+		-- availability -- High availabilty
+		-- consistency -- Eventual consistency
+		-- network partition
+		-- volume of data
+		-- 
+	-- sharding and replication(in built capabilities)
+	-- compatible with different applications(web browser, app, ...)
+	-- No-sql database -- common, trend, adapt to new architecture
+	-- 
+
+Data 
+	-- table format
+	-- Structured data -- tables
+	-- Messages, images, videos, audios, files
+	-- Volume of data 
+		Insta --Number of users -- 100 crores
+			-- User Restriction on photos/videos -- NO
+	-- Variety of data -- Structured data/semi structured/ unstructured data
+	-- Different devices -- work with data 
+	-- Storage/ Management/ Retreival -- Security 
+		-- Encryption during transit -- encrypt, send and decrypt
+		-- Encryption at rest -- encrypted data stored in db
+		-- 
+1. IRCTC -- railway ticket booking
+	-- very fast(query), mobile
+	-- volume of users 
+	-- tatkal -- volume/ fast/ shorter period of time
+	-- ACID properties -- Atomicity, Consistency , Isolation, Durability -- Transactions
+	
+
+2. Aadhaar
+	-- name, mobile number, dob, pob, address, gender, photo, iris scanner, 10 finger scans
+		-- textual info -- RDBMS
+		-- 13 images
+		-- 100 crore 
+		-- 1300 crore images -- storage/ retreival 
+		-- Oracle -- 1 image -- Blob ; binary format -- storage / retrieval -- not efficient
+		-- Mongodb
+		
+3. Amazon
+	-- Users 
+		-- per day -- 1 billion
+		-- Prime day sale -- 10 billion
+		-- One week after prime day sale -- 1 billion
+Prime day sale handling -- Oracle
+	1. Increase CPU, RAM and memory of the single server
+		Pro: Sync not needed(Consistency); High full consistency, Less redundancy
+		Cons: Costlier, High risk of server going down -- entire app down / user impact; slower -- reads and writes will be handled by one server
+	2. Increase the number of servers; earlier -- 10 server; now -- 20 servers(min config)
+		Pros:
+			-- Scaling up and scaling down is easy
+			-- High availability
+			-- writes and reads can be faster
+			-- better user experience
+		Cons:
+			-- Lot of redundancy ; Consistency problems
+
+1. Vertical scaling -- RDBMs
+2. Horizontal scaling -- No sql 
+
+
+iPhone Duo base model memory/RAM
+	-- 256gb -- 3 lakhs
+	-- 2tb -- 4.5 lakhs
+
+Different devices -- languages/ format of structure of data -- map into the database 
+	-- RDBMS -- rigid schema/ table structure
+	-- No -sql -- no fixed structure
+	flexible with data -- 
+
+
+Indexes -- Simple, compound indexes
+Mongodb -- Unique, Partial index, full text indexes, on a particular expression, arrays, Objects, TTL indexes
+ 	
+Eventual consistency		
+Horizontal scaling
+	-- 5 servers 
+		-- 4 -- read and 1 will do the write
+			-- Write --> sent to all the read servers
+			-- write stat -- insert emp 1001 info
+				-- sent to all the read servers so that the data becomes consistent -- async process
+			-- write successful in write server and in 2 of read servers its complete(Write -- N1, n2,n3 -- read servers have completed)
+			-- read select * from emp where empId=1001
+			-- Scenario 1 : Read to n3: data can be read
+			-- Scenario 2 : Read to n5: has n5 finished syncing -- no data can be read/stale data
+			-- Scenario 3 : Read to n2: data can be read
+			-- Scenario 4 (After 1 minutes and all the servers have synched): read op for 1001 -- fresh data
+Eventual consistency -- Over a period of time -- data will become consistent
+
+
+Mongodb -- eventual consistency, High Availability 
+
+
+CAP theorem: Consistency, Availability, Partition Tolerance
+No sql -- Adhere to any of 2 principles in the CAP theorem
+Mongodb -- AP system
+
+Mongodb -- document based No sql database
+
+Types of No sql -- 4 categories
+1. Document based
+2. Column based
+3. Graph based
+4. Key value pairs
+
+
+Mongod deamon server
+
+
+
+
+
+
+
+
+
+
