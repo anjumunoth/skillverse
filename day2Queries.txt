@@ -1,0 +1,471 @@
+db.employee.insertOne({"empId":105,"empName":"tara",_id:null});//_id is auto generated
+
+number datatype -- only numbers
+int32, int64 -- only whole numbers
+
+_id :
+	-- default
+	-- ObjectId -- data type in BSON
+		-- 12 byte value
+
+.wt 
+	-- Mongodb uses wired tiger storage engine (default). in .wt format
+		-- MMavp1(deprecated)
+		-- in memory storage engine
+
+Clients
+	-- mongo shell
+	-- mongo compass
+	-- API
+
+mongoimport mongoexport 
+
+
+Installation
+1. Mongodb enterprise server(windows msi -- includes mongodb compass )
+2. Mongo shell mongosh
+3. Mongodb compass
+4. Mongodb database tools
+
+
+
+Arrays :
+	Exact match
+	$all -- Match a subarray ignoring the positions
+	$elemMatch -- Match a single element with the conditions
+	$size -- Get a specific sized array in the result set
+
+
+// is null
+// between
+// In 
+// Regular Expression
+// Sort
+// Grouping
+// aggregate operators
+// exists
+
+
+Select all the docs where state is MA and pop > 5000;// 306
+
+{
+	$and:
+  	[
+    {state:"MA"},
+    {pop:{$gt:5000}}
+    ]
+}
+
+
+
+
+
+Select all the docs where either city is "PALMER" or pop < 5000;// 18178
+{
+	$or:
+  [
+  	{city:"PALMER"},
+    {pop:{$lt:5000}}
+  ]
+}
+
+Select all the docs where pop is between 5000 and 10000
+
+1. 
+{
+	$and:
+  	[
+    {pop:{$gt:5000}},
+    {pop:{$lt:10000}}
+    ]
+}
+
+
+// 3542
+2. Comma operator
+{pop:{$gt:5000,$lt:10000}};//3542
+// Optimised solution or use the comma operator  only when both the conditions are based on the same field
+
+Select all the docs which are in the loc's 1 position : 42.255704
+{
+	"loc.1":42.255704
+}
+
+{
+	"loc.1":{$gt:42}
+}
+
+// Exact match search in array
+{  "loc": [
+    -72.622739,
+    42.070206
+  ]};// 1 match
+  
+  
+ 2. 
+ {  "loc": [
+   42.070206,
+    -72.622739
+   ]};// 0 docs
+
+
+db.students.insertMany(
+[
+{studentId:101,studentName:"sara",marks:[10,20,30]},
+{studentId:102,studentName:"tara",marks:[100,20,30]},
+{studentId:103,studentName:"lara",marks:[30,20,10]},
+{studentId:104,studentName:"ram",marks:[10,10,10]},
+{studentId:105,studentName:"gita",marks:[10,20,30]},
+{studentId:106,studentName:"sita",marks:[10,55,30]},
+{studentId:107,studentName:"shyam",marks:[90,90,90]},
+{studentId:108,studentName:"rita",marks:[60,70,80]},
+]
+)
+
+1.Get all the docs of those students who have got atleast a  mark greater than 50;//102,106,107,108
+db.students.find({marks:{$gte:50}});// search for an element which matches the condition ;; 
+
+2. Get all the docs who have got 10,20,30 ;//101,105; exact order matching
+db.students.find({marks:[10,20,30]});//
+
+3. Get all the docs who have got 10,20,30 in any order ;//101,103,105; 
+db.students.find({marks:{$all:[10,20,30]}});//
+
+4. Get all the docs who have got 10 and 30;// 101,103,105,106
+db.students.find({marks:{$all:[10,30]}});
+
+5. get all the students who have got a mark greater than 50 and less than 60
+Answer : 102,106
+db.students.find({marks :{$gt:50,$lt:60}});//102,106 
+
+db.students.find({
+$and:[
+{marks:{$gt:50}},
+{marks:{$lt:60}}
+]
+});//102, 106
+
+
+6. get all the students who have got a single mark which is greater than 50 and less than 60
+Answer : 106
+Single element which matches more than one condition : $elemMatch -- works only with array
+db.students.find({
+marks:
+	{$elemMatch:{$gt:50,$lt:60}}
+});// 106
+
+7. 
+db.students.insertOne({studentId:109,studentName:"rita",marks:[60,70]})
+
+$size : search for docs with a given sized array
+db.students.find({
+marks:
+	{$size:2}
+});// 109
+
+
+Regular expression : 
+	-- Write a pattern in a string format
+  	-- Enclose between the slashes
+    -- case sensitive
+    
+1. Start with s
+	/^s/ ;
+2.  Start with s/S
+	/^s/i
+3. Ends with a 
+	/a$/
+4. Ends with ara
+	/ara$/
+5. Starts with s and is only 4 characters
+/^s.../
+
+3 special wild card expressions
+? -- 0 or 1 character (preceeding character)
+* -- 0 or more characters(preceeding character)
++ -- 1 or more characters(preceeding character)
+
+/good/
+/go?d/ -- gd, god ; Not matching -- good 
+/go*d/ -- gd,god, good, goooood
+/go+d/ -- god, good, goooood
+
+match digits 
+1. 1 digit
+/[0-9]/
+Matching values : anju0; an1ju; 0anju;
+Non matching values: anju01
+
+2. 10 digits
+/[0-9]{10}/
+Matching values : 1234567890; 77777777777
+
+Have a "a" in their names
+db.students.find({studentName:/a/i})
+
+Ends with "ara" in their names
+db.students.find({studentName:/ara$/i})
+
+
+zipcode:
+Docs which have a pop > 10000 and their city name starts with "p"
+db.zipocode.find(
+{$and:[
+{pop:{$gt:10000}},
+{city:/^p/i}
+]}
+)
+
+Docs which are in the state in the foll list : MA, PA, RI, TN
+db.zipcode.find(
+$or:[
+{state:"MA"},
+{state:"PA"},
+{state:"RI"},
+{state:"TN"}
+]
+)
+
+Better way:Optimised
+db.zipcode.find(
+{
+	state:{$in:["MA", "PA", "RI", "TN"]}
+}
+);// 2583
+
+
+$nin:
+db.zipcode.find(
+{
+	state:{$nin:["MA", "PA", "RI", "TN"]}
+}
+);// 26770;// will match those docs which do not have state in it -- yes
+
+Total no of docs : 29353
+29353-2583= 26770
+
+
+db.students.insertMany([
+{studentId:201,studentName:"sara"},
+{studentId:202,studentName:"tara",marks:null},
+{studentId:203,studentName:"lara",marks:[30,20,10]},
+{studentId:204,studentName:"lara",marks:"not got yet"}
+])
+Result : 
+Success:201,202,203,204
+
+db.students.find({
+marks:{$ne:20}
+});// 201,202,204
+
+$exists:
+Check for the existence for a particular field:
+db.students.find({
+marks:{$exists:false}
+});// 201
+
+Find all students who have a mark  not equal to 20 (marks field exists and marks not equal to 20 )
+db.students.find({
+marks:{$exists:true,$ne:20}
+});// 202,204
+
+Find all the docs where marks is null;//201,202 -- docs where marks is null and marks is missing 
+db.students.find({
+marks:null
+});// 201, 202
+
+Find all the docs where marks is null;//202
+
+db.students.find({
+marks:{$exists:true,$eq:null}
+});// 202
+
+Find all the docs where marks holds a string value;// 204
+BSON -- Binary Json -- provide a set of data types -- 
+db.students.find({
+marks:{$type:2}
+});// 
+
+Null --10
+db.students.find({
+marks:{$type:10}
+});// returns all doc for which marks is null; 202
+
+
+Objects:
+Emp:
+{empId:101,
+empName:"LR",
+projectDetails:{role:"OracleDba",pl:"BLR"},
+address:{streetName:"aa",streetNumber:11,area:"BLR"}
+}
+
+Access the fields of object:
+db.emp.find({
+"projectDetails.role":"OracleDba"
+});// 
+
+Why Objects ?
+1. In RDBMS -- tables, referential integrity constraint
+	-- emp table and projects table
+  empId and role -- join the 2 tables
+  join -- costly -- avoid
+  Mongodb introduced -- embedded objects 
+  wherever joins are required, the table to be joined is added as a embedded object in the main table itself
+  Limitation : Redundancy of data -- there is some redundancy
+  Advantages : All data in one doc -- no joins required, fetch one doc and all details, no syncing is required
+
+
+Data modelling 
+Avoid joins
+	-- Embedded objects
+  -- Referenced objects
+
+Array of Objects
+
+
+Restaurant collection
+Map to RDBMs
+	1. restaurant table (PK -- restaurant_id)
+  2. restaurant_review table (FK -- restaurant_id)
+  
+What is the review of a particular restaurant -- join the above 2 tables
+
+Mongodb :
+Doc : restaurant details and its reviews
+1.Can a restaurant have 0 reviews
+2. Can a restaurant R1 have 5 reviews and R2 have 3 reviews
+
+
+Objects,Array of objects:
+1. Find all docs which belong to borough : Bronx
+{borough:"Bronx"};//Anju
+
+2. Get me all the restaurants in zipcode "10462"
+{ "address.zipcode":"10462" }  // dheeraj 26 documents
+ .{'address.zipcode':'10462'} // nikhil 26 documents
+ 
+{"address.zipcode":"10462"};//sonakshi
+{"address.zipcode":'10462'};//suresh
+{"address.zipcode":"10462"} // Madhu babu
+{'address.zipcode':'10462'} // Premdas 26 documents
+
+{'address.zipcode':'10462'} //Ashish  26 documents
+{ "address.zipcode":"10462" }   //lachi Reddy
+
+
+
+
+
+
+
+
+3. Are the outputs of the foll queries the same
+{"address.zipcode":"10462",cuisine:"American "};//7
+{$and:[{"address.zipcode":"10462"},{cuisine:"American "}]};//7
+
+{marks :{$gt:55,$lt:65}}
+{$and:[{marks:{$gt:55}},{marks:{$lt:65}}]}
+
+4. Get all docs who have got a score of 2
+{"grades.score":2} // 717
+// In grades array will look out for any element which has a score of 2 
+
+5. Get all docs who have got a score of 2 in their 0th element
+{"grades.0.score":2} // 171
+
+6. Get all docs who have got a score of 2 and grade "C"
+name: "Shell Lanes"
+{"grades.score":2,"grades.grade":"C"} // dheeraj 69 documents
+{$and:[{'grades.score':2},{'grades.grade':'C'}]} //nikhil 69 -- "Shell Lanes" named restaurant will be there
+
+{
+  $and: [
+    { "grades.grade": "C" },
+    { "grades.score": 2 }
+  ]
+}
+
+{grades:{score:2,grade:"C"}};// 0 docs; exact match -- exact matching grades field with an object; collection grades is an array
+
+
+7. Restaurants which have a single array element which matches both the condition
+{grades:
+	{
+  	$elemMatch:{score:2,grade:"C"}
+  }
+};// 22;  "Shell Lanes" named restaurant will not be there
+Note :
+1. $elemMatch always works only on arrays
+2. Match all the multiple conditions against a single element
+
+
+
+8. Get all docs who have got a score greater than 2
+
+{"grades.score":{$gt:2}}  //lachi; 3769
+{"grades.score":{$gt:2}}
+
+{"grades.score":{$gt:2}}  // Ashish 3769
+
+{"grades.score":{$gt:2}} // nikhil 3769
+
+9. Get all the docs which have a longitude greater than 40
+ {"address.coord.1":{$gt:40}}
+
+
+{"address.coord.1":{$gt:40}} // nikhil 3755
+{"address.coord.1":{$gt:40}}  //Lachi /3755
+{"address.coord.1":{$gt:40}} // Dheeraj 
+{"address.coord.1":{$gt:40}} // 3755  -- madhu 
+
+{"grades.2.score":5};// 192;In the grades array, check for the element in the 2nd position and get the docs which have a score =5
+
+1. Projection
+2. Sort
+3. Grouping
+4. Indexes
+
+
+
+
+
+
+
+
+Assignment : Restaurant collection
+1. Get all docs who have got a score of 2
+2. Get all docs who have got a score greater than 2
+3. get all the docs which have a single element where score is greater than 5 and grade is "A"
+4. get all the docs where cuisine is "American " and borough is "Bronx" and grade is "C"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
