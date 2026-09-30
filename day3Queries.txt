@@ -1,0 +1,397 @@
+db.collectionName.find(predicateCondition, projectionCondition)
+projectionCondition : jsonObject -- list of inclusions or exclusions
+
+db.employee.find({},{salary:1});// salary, _id
+db.employee.find({},{salary:1,_id:0});// salary
+
+db.employee.find({},{salary:0});// All the fields other than salary will be displayed
+
+db.employee.find({},{salary:0,_id:0});// All the fields other than salary  and _id will be displayed
+
+db.employee.find({},{salary:1,empId:0});// Error that projection cannot have both inclusions and exclusions
+
+Projection with an array :
+	-- Rules 
+  	-- Predicate condition should be on an array field :
+$slice
+$
+$elemMatch
+
+
+$:
+	-- Return the first element which satisfies the predicate condition on the array
+db.zipcode.find(
+{loc:{$gt:40}},
+{"loc.$":1}
+)
+
+$slice:
+Specify the number of elements in the array to be projected
+
+db.collName.find({predicateCondition},{$slice:n});// positive number: first n elements; negative number : last n elements; n>size of array -- all elements
+db.collName.find({predicateCondition},{$slice:[number,number]});
+// $slice:[numberToSkip,numberToReturn ]
+	numberToSkip
+  	-- positive number : skip from the beginning of array
+    -- negative number : skip from the end of array
+  numberToReturn -- should be always positive
+  
+  
+[10,20,30]
+[ 0, 1 ,2]
+
+$slice:[-1,1]
+size of the array : 3-1 = 2; from the 2nd position , display one element:
+
+$slice:[-2,1]
+size of the array : 3-2 = 1; from the 1st position , display one element: 20
+
+Return an array with the last 3 elements:
+db.student.find({},{marks:{$slice:-3}})
+
+Return an array with the  3 elements after skipping the first element:
+db.student.find({},{marks:{$slice:[1,3]}})
+
+Return an array with the  3 elements after skipping the last element:
+db.student.find({},{marks:{$slice:[-1,3]}})
+
+
+
+$elemMatch:
+
+db.restaurant.find(
+{},
+{name:1,borough:1}
+)
+// count of docs : 3772
+// projected fields : name, borough,_id
+
+db.restaurant.find(
+{},
+{name:1,borough:1,_id:0}
+)
+// count of docs : 3772
+// projected fields :name, borough
+
+
+db.restaurant.find(
+{},
+{
+name:1,borough:1,_id:0,
+grades:{$elemMatch:{score:2}}
+}
+)
+// count of docs : 3772
+// projected fields :name, borough, first element of grades array which satisfies the condition given as part of elemMatch
+
+
+
+compare the foll 2 queries
+
+db.students.find(
+{
+	marks:{$elemMatch:{$gt:50,$lt:60}}
+}
+)
+// count of docs : docs which have a single mark in the range 50 to 60
+// projected fields :all
+
+db.students.find(
+{},
+{
+	marks:{$elemMatch:{$gt:50,$lt:60}}
+}
+)
+// count of docs : all 
+// projected fields: marks : one element(single mark in the range 50 to 60) or zero element(no mark in the range 50 to 60) 
+
+
+Chaining of methods with find()
+count()
+limit()
+sort()
+skip()
+
+count()
+	-- return the count of docs returned from the find call
+  db.collectionName.find(predicateObject,projectionObject).count();
+  db.students.find({studentName:/^s/i}).count();// Only count --5
+  
+limit()
+	-- limit the result set to the given number of docs
+  db.students.find({studentName:/^s/i}).limit(2);// Only first 2 docs will be displayed
+  
+skip()
+	-- skip some of the elements in the result set:
+  -- Negative number will throw an error
+  db.students.find({studentName:/^s/i}).skip(2);// Skip first 2 docs and display the rest of the result set will be displayed
+  
+100 docs : skip the first 5 and get the next 5 
+db.zipcode.find({state:"MA"}).skip(5).limit(5)
+db.student.find().skip(3).limit(3);// 104,105,106
+db.student.find().limit(3).skip(3);// 104,105,106
+
+sort()
+	-- sort asc or desc order
+db.students.find().sort({studentName:1});//asc 
+db.students.find().sort({studentName:-1});//desc 
+
+db.students.find().sort({studentName:1,studentId:1});//both in asc 
+db.students.find().sort({studentName:1,studentId:-1});//studentName in asc order and the wherever studentName is same, sort in desc order of studentId
+
+sort by _id in desc and then limit 2
+
+update Operations:
+
+updateOne
+	-- matchedCount : 0 or 1
+  -- modifiedCount : 0 or 1
+  -- Combinations possible :
+  {matchedCount:1, modifiedCount:1,acknowledged:1}
+  {matchedCount:1, modifiedCount:0,acknowledged:1}
+  {matchedCount:0, modifiedCount:0,acknowledged:1}
+  
+  -- Combinations not possible:
+  {matchedCount:0, modifiedCount:1,acknowledged:1}
+  	
+updateMany
+
+db.students.updateOne({findCondition},{updateObject})
+db.students.updateOne({studentId:101},{$set:{studentName:"George"}});
+// {matchedCount:1, modifiedCount:1,acknowledged:1}
+
+db.students.updateOne({studentId:101},{$set:{studentName:"George"}});
+// {matchedCount:1, modifiedCount:0,acknowledged:1}
+
+db.students.updateOne({studentId:101},{$set:{loc:"BLR"}});
+// Append a new field called as loc to studentId:101 document
+// {matchedCount:1, modifiedCount:1,acknowledged:1}
+
+db.students.updateOne({studentId:{$gt:101}},{$set:{studentName:"Giri"}});
+// {matchedCount:1, modifiedCount:1,acknowledged:1};// 102 alone will be modified
+
+db.students.updateOne({studentId:{$gt:101}},{$set:{studentName:"Giri"}});
+// {matchedCount:1, modifiedCount:1,acknowledged:1};// 102 alone will be modified
+
+
+db.students.updateOne({studentId:{$lt:100}},{$set:{studentName:"Giri"}});
+// {matchedCount:0, modifiedCount:0,acknowledged:1};// 102 alone will be modified
+
+
+-- Docs will maintain insertion order when stored in disk as well
+-- Index on _id field gets implicitly created when coll is creation
+	-- Index can never be deleted
+  -- Index gets deleted implicitly only when the collection is dropped
+--
+
+db.demo.insertMany([
+{_id:101, name:"sara"},
+{_id:105, name:"tara"},
+{_id:103, name:"lara"},
+{_id:102, name:"ram"},
+{_id:108, name:"shyam"},
+])
+db.demo.updateOne({_id:{$gt:101}},{$set:{studentName:"Giri"}});// 105 ; 
+
+
+updateMany():
+	-- update multiple docs 
+		-- matchedCount : 0,1,2,3....count() 
+  	-- modifiedCount : 0 or more
+  	-- modifiedCount<= matchedCount
+    
+    
+  -- Combinations possible :
+  {matchedCount:1, modifiedCount:1,acknowledged:1}
+  {matchedCount:1, modifiedCount:0,acknowledged:1}
+  {matchedCount:0, modifiedCount:0,acknowledged:1}
+  {matchedCount:10, modifiedCount:6,acknowledged:1};// 10 docs which match the find criteria and only 6 docs which are getting updated. the other 4 may already have the updated value
+  {matchedCount:6, modifiedCount:6,acknowledged:1}
+  
+  -- Combinations not possible:
+  {matchedCount:5, modifiedCount:7,acknowledged:1}
+
+
+replaceOne:
+	-- 2 params
+  	-- findCriteriaObject
+    -- replaceDoc
+    // replace the entire doc which matches the search criteria with the second param
+		//_id remains the same
+
+db.students.updateOne({studentId:102},{$set:{studentId:999,studentName:"Jack",school:"DAV"}});
+// change studentId:999, studentName:Jack and school to DAV and keep the other fields intact
+
+db.students.replaceOne({studentId:102},{studentId:999,studentName:"Jack",school:"DAV"})
+// change studentId:999, studentName:Jack and school to DAV and remove the other fields
+
+Update part of the doc -- updateOne
+Replace the entire doc -- replaceOne 
+
+Deletion of records:
+deleteOne()
+	-- delete the first doc which matches the filter Criteria
+deleteMany()
+	-- deletes all the matching Docs
+	-- params
+  	-- where condition
+    
+db.students.deleteOne({studentId:103});// delete the first record which matches 103
+
+db.students.deleteOne({}); // delete the first inserted doc
+db.students.deleteOne(); // error; needs the first parameter which is mandatory
+db.students.deleteMany({studentId:104}); // delete the doc(s)
+
+db.students.deleteMany({studentId:{$gt:300}});// delete doc(s) which matches the criteria
+
+db.students.deleteMany({}); // delete all the docs ; collection will become empty but will exists
+
+
+Indexes in RDBMS:
+	-- Pointer at row level
+  -- Improve the query performance
+  -- Search faster
+  -- Slower the writes
+  -- Index on PK
+  -- Multiple indexes on the same table
+  -- B-Tree Indexes, Bitmap indexes
+  -- Indexes are stored on disk/ persisted
+  -- Data partition
+  
+Mongodb
+	-- variety of indexes
+  	-- simple index
+    		-- string, number, boolean data type, array, object, array of object
+    -- compound indexes
+    		-- based on multiple fields
+    -- text index
+    -- geospatial index
+  -- Properties
+  	-- unique
+    -- partial
+    -- ttl
+    -- sparse
+    -- wild card indexes
+    
+  -- Multiple indexes in the same collection
+  -- B-tree indexes
+  -- Performance 
+  	-- queries are faster
+    -- writes are slower
+  -- Indexes -- .wt 
+  -- 
+  
+ Indexes 
+ 	-- Avoid full collection scan
+  -- Depends on query
+  -- Depends on frequency of query
+  	-- 1% of queries are based on cuisine -- think if index on cuisine is needed
+  -- Depends on size of collection
+  -- Depends on number of docs which have this field
+  	-- 10% of docs have cuisine -- creating would be beneficial 
+  -- database -- more read operations and more write operations 
+  -- type of index (simple, compound, properties)
+  
+
+  Uber
+  1. pick up loc(lat, long), drop loc
+  2. all the drivers in a 5 km radius will be notified(lat,long)
+  Geo spatial data -- static data , calculations (dynamic distance between the drivers and pick up point)
+  Multiple cab providers
+  Multiple users
+  Multiple drivers (diff set of vehicles)
+  
+  
+  Amazon
+  apple
+  	-- Apple phones
+    -- Laptops
+    -- Headphones
+    -- watches
+    -- Earbuds
+    -- accessories
+    -- macs /laptops
+    -- fruits
+    -- vinegar
+    -- brands clothing
+    
+  matches across multiple categories
+  matches across name field, description field, category name, product , brands
+  Text index -- match a word with the values in multiple fields in the docs in the collection
+  
+  
+  Unique Index 
+  	-- _id in asc order
+    -- Not allow duplicates for that field
+    -- search faster
+  	-- Multiple indexes -- yes
+    	-- example -- restaurant_id in the restaurant collection
+      
+  Partial index
+  	-- Index only on some of the docs which satisfy a filter condition(condition(s))
+    -- Index on salary field on those emp who have got a salary greater than 5000
+    -- Will be used only when the find has the search criteria matching the filter condition
+    --Example 
+    Collection -- Details about the queries executed and time the query took to execute(queryExecutionTime)
+    Profiler Collection
+    Monitor all queries -- yes
+    Concentration -- Identify the slow queries(>5ms)
+    Index on profiler collection
+    Scenario 1: Create an index on the queryExecutionTime
+    Scenario 2: Create an index on the queryExecutionTime with a partialFilterExpression that queryExecutionTime> 5ms
+  	Scenario 2 is better    
+    
+  Sparse index
+  	-- Only use those docs for creating the index which have the salary(indexed) field
+		-- Mongodb 
+    	-- flexible schema
+      	-- no 2 docs need to have same schema
+        -- salary need not be present in each doc of an employee
+        Example : Emp collection 10 million docs; 2 million docs have salary field
+        Scenario 1: create an index on salary
+        Scenario 2: create an index on salary with sparse :true
+        	-- index on 2 million docs; index -- much smaller; queries based on salary -- faster
+        
+  
+
+_id
+	-- Implicit unique index created when the collection gets created
+	-- Acts like the PK
+	-- pass null for _id : _id will be auto generated
+	-- cant be of array data type or regex data type
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+    
+    
+    
+    
+
+
+
+
+
+
+
+
