@@ -1,0 +1,433 @@
+Indexes 
+	-- B-Tree Indexes
+Full Collection Scan 
+	-- Time consuming
+  -- More resource utilisation
+  	-- RAM, CPU, disk I/O
+    
+Explain :
+	-- Give a lot of statistical info about the query execution
+  -- db.collName.find().explain()
+  -- 3 different verbosity levels
+  	
+    
+  -- queryHash
+  	-- stored as part of metadata of collection
+    -- stores the db, collection name and commands for the various queries executed
+    
+  -- planCache
+Cache 
+	-- part of RAM memory
+  -- Used to store frequently accessed items
+  -- Faster access
+  -- Eviction policy
+  	-- cache size -- limited 
+    	-- not able to keep the entire data in the cache
+    -- read 
+    	-- check if required data is in the cache 
+      	-- if present in the cache -- cache hit
+        	-- return from the cache itself the required data
+        -- if not present in the cache -- cache miss
+        	-- read from the disk ; store in the cache(if cache memory not available -- will do eviction); return the result to user
+        
+Mongodb 
+	-- wired tiger cache
+  	-- cache docs, index entries
+    -- of a configurable size
+    -- read query
+    	-- match the query shape with query hash already present
+      -- if matches -- execute based on corresponding plan cache
+      -- if no match -- process of execution, get the winning plan, store it in a new query hash and plan cache and return the result
+      
+Execution Plan -- picked from the cache
+      
+  
+Whenever a read query comes in -- Process in which it is executed
+	-- Match the queryHash and check if this query matches any of the queries already executed 
+  	-- If there ia a match -- return the result from the plan cache -- not excute the command, fetch from the cache
+    -- If there is no match 
+    	-- find all the candidate plans -- run all the candidate plans -- whichever is the fastest at the first stage -- go ahead mark it as winning plan and stop the others and add them to the rejected plan
+    	-- add the winning plan as the plan cache for this query shape
+
+Hinting an index :
+	For a query, a hint can be given 
+  	-- which index to be used
+
+  
+Simple Index or Single Index
+	-- db.collectionName.createIndex({fieldName:1 or -1},{options})
+  -- Sort order doesnt make any difference
+  -- Options
+  	-- name for index
+    -- properties for index 
+    	-- partial, ttl, sparse, unique, hidden
+    -- Multiple simple index for the same collection
+    
+  -- db.zipcode.createIndex({state:1})
+  	// name of index : state_1
+    
+  -- db.zipcode.createIndex({city:-1})
+  	// name : city_-1
+  -- db.zipcode.createIndex({city:-1},{name:"idx_city"});// create a user defined name
+  
+    
+Queries which will use the index:
+1. db.zipcode.find({state:"MA"});// yes
+2. db.zipcode.find({city:"abc"});// yes ; indexEntries : n; docsScanned: 0
+3. db.zipcode.find().sort({city:1});// yes(city_-1);
+4. db.zipcode.find().sort({city:-1});// Yes
+5. db.zipcode.find().sort({state:-1});//yes
+6. db.zipcode.find().sort({state:1});// Yes
+7. db.zipcode.find({state:"MA"}).sort({city:-1})
+	// query execution plan : fetch all docs where state is MA and later sort the fetched docs in desc order of city
+  // 1. Use the state index -- faster ; sort acc to city
+  // 2. Fetch the sorted docs based on city and the filter out the docs based on state:"MA" -- use the city index
+  // 3. Can it use both indexes
+3 candidates for the solution
+	-- 1 winner
+  -- 2 rejectedPlans
+    
+1: Get all the docs and then sort
+2. Get the sorted array and display 
+    
+tara,sara,lara
+lara,sara,tara
+
+objects
+{proj:proj1,emp:{empId:105,empName:"sara"}}
+{proj:proj2,emp:{empId:101,empName:"tara"}}
+{proj:proj3,emp:{empId:110,empName:"lara"}}
+
+empId:101;// data type of empId : int
+empName:"sara";// string
+marks:[10,20,30];//array
+subjects:{subjectId:101, name:"hindi"};// Object
+
+db.projects.createIndex({emp:1}); 
+	// data type of emp : Object
+  // create an index on object
+  // proj2,proj1,proj3 -- sorted docs based on index entries
+
+
+Reracing?
+When does the cache clear and rerace?
+
+db.collectionName.aggregate([
+{$planCacheStats:{}}
+])
+
+
+const cache=db.collectionName.getPlanCache();
+cache.list();
+
+db.collectionName.getPlanCache().clear();// clear all the cache
+db.collectionName.getPlanCache().clearPlansByQuery({status:"active"})
+
+Indexes 
+	-- B-Tree Indexes
+Full Collection Scan 
+	-- Time consuming
+  -- More resource utilisation
+  	-- RAM, CPU, disk I/O
+    
+Explain :
+	-- Give a lot of statistical info about the query execution
+  -- db.collName.find().explain()
+  -- 3 different verbosity levels
+   "queryPlanner","executionStats","allPlansExecution" 
+  	
+    
+  -- queryHash
+  	-- stored as part of metadata of collection
+    -- stores the db, collection name and commands for the various queries executed
+    
+  -- planCache
+Cache 
+	-- part of RAM memory
+  -- Used to store frequently accessed items
+  -- Faster access
+  -- Eviction policy
+  	-- cache size -- limited 
+    	-- not able to keep the entire data in the cache
+    -- read 
+    	-- check if required data is in the cache 
+      	-- if present in the cache -- cache hit
+        	-- return from the cache itself the required data
+        -- if not present in the cache -- cache miss
+        	-- read from the disk ; store in the cache(if cache memory not available -- will do eviction); return the result to user
+        
+Mongodb 
+	-- wired tiger cache
+  	-- cache docs, index entries
+    -- of a configurable size
+    -- read query
+    	-- match the query shape with query hash already present
+      -- if matches -- execute based on corresponding plan cache
+      -- if no match -- process of execution, get the winning plan, store it in a new query hash and plan cache and return the result
+      
+Execution Plan -- picked from the cache
+      
+  
+Whenever a read query comes in -- Process in which it is executed
+	-- Match the queryHash and check if this query matches any of the queries already executed 
+  	-- If there ia a match -- return the result from the plan cache -- not excute the command, fetch from the cache
+    -- If there is no match 
+    	-- find all the candidate plans -- run all the candidate plans -- whichever is the fastest at the first stage -- go ahead mark it as winning plan and stop the others and add them to the rejected plan
+    	-- add the winning plan as the plan cache for this query shape
+
+Hinting an index :
+	For a query, a hint can be given 
+  	-- which index to be used
+
+  
+Simple Index or Single Index
+	-- db.collectionName.createIndex({fieldName:1 or -1},{options})
+  -- Sort order doesnt make any difference
+  -- Options
+  	-- name for index
+    -- properties for index 
+    	-- partial, ttl, sparse, unique, hidden
+    -- Multiple simple index for the same collection
+    
+  -- db.zipcode.createIndex({state:1})
+  	// name of index : state_1
+    
+  -- db.zipcode.createIndex({city:-1})
+  	// name : city_-1
+  -- db.zipcode.createIndex({city:-1},{name:"idx_city"});// create a user defined name
+  
+    
+Queries which will use the index:
+1. db.zipcode.find({state:"MA"});// yes
+2. db.zipcode.find({city:"abc"});// yes ; indexEntries : n; docsScanned: 0
+3. db.zipcode.find().sort({city:1});// yes(city_-1);
+4. db.zipcode.find().sort({city:-1});// Yes
+5. db.zipcode.find().sort({state:-1});//yes
+6. db.zipcode.find().sort({state:1});// Yes
+7. db.zipcode.find({state:"MA"}).sort({city:-1})
+	// query execution plan : fetch all docs where state is MA and later sort the fetched docs in desc order of city
+  // 1. Use the state index -- faster ; sort acc to city
+  // 2. Fetch the sorted docs based on city and the filter out the docs based on state:"MA" -- use the city index
+  // 3. Can it use both indexes
+3 candidates for the solution
+	-- 1 winner
+  -- 2 rejectedPlans
+    
+1: Get all the docs and then sort
+2. Get the sorted array and display 
+    
+tara,sara,lara
+lara,sara,tara
+
+objects
+{proj:proj1,emp:{empId:105,empName:"sara"}}
+{proj:proj2,emp:{empId:101,empName:"tara"}}
+{proj:proj3,emp:{empId:110,empName:"lara"}}
+
+empId:101;// data type of empId : int
+empName:"sara";// string
+marks:[10,20,30];//array
+subjects:{subjectId:101, name:"hindi"};// Object
+
+db.projects.createIndex({emp:1}); 
+	// data type of emp : Object
+  // create an index on object
+  // proj2,proj1,proj3 -- sorted docs based on index entries
+
+
+Reracing?
+When does the cache clear and rerace?
+
+db.collectionName.aggregate([
+{$planCacheStats:{}}
+])
+
+
+const cache=db.collectionName.getPlanCache();
+cache.list();
+
+db.collectionName.getPlanCache().clear();// clear all the cache
+db.collectionName.getPlanCache().clearPlansByQuery({status:"active"})
+
+select max(salary),deptId from emp group by department;  
+Mongodb
+	-- Aggrtegation pipeline
+  	-- Consists of multiple steps / stages
+    -- Output of one stage becomes the input for the next stage
+    -- Stages 
+    		-- group
+        -- filter/find
+        -- projection
+db.collectionName.aggregate(
+[
+{stage1},
+{stage2}
+]
+)
+
+planCacheStats -- stage in the aggregation pipeline
+db.zipcode.aggregate(
+[
+{$planCacheStats:{}}
+]
+)
+
+
+db.zipcode.find({city:/^P/i});//
+
+db.zipcode.find({city:{$in:["AGAWAM","BERLIN"]}});// yes city index
+
+//state index
+// city index
+// no index
+// both the indexes
+
+db.zipcode.find({city:"AGAWAM"}).sort({state:1});
+//city index -- filter condition  and fetch and sort -- 3 stages
+// state index -- get all sorted docs based on state -- fetch -- filter city:AGAWAM
+// candidate 1 plan : how many docs match city : agawam -- m; fetch and sort;
+ candidate 2 plan -- how many docs from state index -- n; filter
+  m with n ;
+  whichever is smaller/faster --- use the corresponding index
+  In our example m=1
+  n == 29k 
+  
+  
+  
+  
+//
+
+db.zipcode.find({state:"MA"}).sort({city:-1});
+
+Multi key index:
+	-- index on an array
+  -- Index entry for each element of array
+  
+Scenarios under which multi key index will be used
+	-- Exact search based on the array
+  
+  -- inequality, $all, $elemMatch
+   { "loc":{$gt:40}}
+{ "loc":{$elemMatch:{$gt:40,$lt:42}}}
+{  loc: {    $all: [      40    ]  }}
+
+
+Index on an object
+	-- Size of an index on an object is usually huge
+  -- Not so frequently used
+Scenarios under which  index on object will be used
+	-- Exact search on object
+  
+Scenarios under which  index on object will not be used
+	-- search based on embedded field
+	-- {"address.streetNo":11}
+  
+  
+{"address.zipcode":"10462"}//26; Search based on embedded field; will not use the object index
+{"address":{zipcode":"10462"}}//0 ; exact check of an object against another object(which has only 1 field zipcode); will use the object index
+
+
+Covered Query:
+// index on state
+db.zipcode.find({state:"Maharashtra"});// zero docs
+// will use the state index ;
+2 stages : IXSCAN, FETCH
+IXSCAN -- number of entries -- 0
+There is no doc corresponding to the given query
+Get the Result set from the IXSCAN -- Covered query ; Doc Examined =0
+
+Best Practices:
+	-- Analyse the query pattern -- create the indexes
+  	1% of queries are based on objects -- no need to create the index on objects
+  -- Decide whether simple /compound index
+  -- Never create 2 simple indexes on the same field (change the order)
+  -- 
+  
+Can another index be created on _id -- No
+Can index on restaurant_id in asc order and another unique index in the desc order be created -- YES but not of any use
+Will a unique index on restaurant_id restrict duplicate values -- YES
+
+Mongodb -- flexible schema -- no constraints -- 
+
+Compound Index 
+	-- Index on multiple fields
+  -- Important rules
+  	-- Position of fields is very important
+    -- Sort order of fields is very important
+  -- Prefix compression is done by default
+    
+    
+db.zipcode.createIndex({state:1,city:-1})
+
+
+db.zipcode.find({state:"MA"});// Compound index will be used
+db.zipcode.find({city:"AGAWAM"});// Compound index will not be used
+
+db.zipcode.find({}).sort(state:1);// Compound index will be used
+db.zipcode.find({}).sort(state:-1);// Compound index will be used
+db.zipcode.find({}).sort(city:1);// Compound index will not be used
+db.zipcode.find({}).sort(city:-1);// Compound index will not be used
+
+db.zipcode.find({}).sort(state:1,city:1);// Compound index will not be used
+db.zipcode.find({}).sort(state:1,city:-1);// Compound index will be used
+db.zipcode.find({}).sort(state:-1,city:1);// Compound index will be used
+db.zipcode.find({}).sort(state:-1,city:-1);// Compound index will not be used
+
+db.zipcode.find({city:"AGAWAM"}).sort({state:1});// Compound index will be used
+// Plan : Use the compound index -- get the sorted state wise docs ; fetch -- filter  -- winning plan
+// Plan : COLL SCAN 
+
+db.zipcode.find({city:"AGAWAM"}).sort({state:-1});// Compound index will be used
+// Plan : Use the compound index -- get the sorted state wise docs in desc order ; fetch -- filter 
+
+
+
+db.emp.insertMany([
+{empId:101,deptId:"d1",salary:1234},
+{empId:107,deptId:"d1",salary:21234},
+{empId:103,deptId:"d2",salary:12234},
+{empId:102,deptId:"d2",salary:12324},
+{empId:106,deptId:"d3",salary:12345},
+{empId:105,deptId:"d3",salary:123400},
+{empId:104,deptId:"d4",salary:1},
+
+])
+
+db.emp.createIndex({deptId:1,salary:-1})
+{d1,21234}{d1,1234}{d2,12324}{d2,12234}{d3,123400}{d3,12345}{d4,1}
+
+db.emp.find({salary:12324});// COLLSCAN
+// go to the compound index -- search for salary:12324; index entries are based on deptId as the prefix -- index cant be used
+
+db.emp.find({deptId:"d4"});// compound index
+    
+Create 2 indexes
+	1. Simple index on state
+  2. Compound index on {state:1,city:-1}
+  
+db.zipcode.find({state:"MA"})
+// Simple Index -- Size of index is smaller; index entries are lesser; btree search is faster; since index is smaller -- can fit in the cache; since in cache -- faster
+// Compound index -- search is based on prefix; prefix compression is there is faster
+
+// also depends on the plan cache - for this query shape -- what is there is the plan cache -- will always execute whats there in the plan cache
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
