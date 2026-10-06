@@ -1,0 +1,517 @@
+Replication
+  -- Data is going to replicated in multiple servers
+  -- Data redundancy and eventual consistency
+  -- High Availability
+  -- Reporting
+  -- Data protection -- Disaster Recovery
+  -- Increase the number of servers who can handle the reads
+
+Replica Set
+  -- Maximum 50 members
+  -- Maximum of 7 voting members
+  -- Best practice -- odd number of members
+
+Member
+  -- Server (mongod deamon server)
+  -- Priority
+  -- Voting Power
+  -- State
+  -- Health
+
+n member replica set
+  -- Each and every member is going to exchange a heartbeat with every other members
+  -- every 2 seconds there is a heartbeat exchange
+    -- continuous communication that the member is alive
+  -- if for 10 secs, there is no heartbeat, that member is down
+  -- Times are configurable
+
+Replica set
+  -- Only One Primary
+  -- Secondary members
+  -- 1 Arbiter(Optional)
+
+Priority :
+  Possible values : 0 to 1000
+Votes 
+  Possible values : 0 or 1
+Primary member
+  -- Member who will handle all the reads and writes
+  -- Only member who can handle the writes
+  -- Priority > 0
+  -- Votes :1
+
+Secondary member
+1. Normal secondary 
+  -- Asynchronously Sync data from the primary
+  -- Priority > 0
+    -- Can become the primary if an election occurs
+  -- Votes :1 or 0
+
+2. Zero Priority Secondary:
+  -- Asynchronously Sync data from the primary
+  -- Priority = 0
+    -- Can never become the primary 
+  -- Votes :1 or 0
+  -- Use case: DR, More read servers, Reporting,Dump, export
+
+3. Hidden Secondary:
+  -- Asynchronously Sync data from the primary
+  -- Not Visible to the user
+  -- Priority = 0
+    -- Can never become the primary 
+    -- If hidden, the writes may not come to this server; writes will fail
+  -- Votes :1 or 0
+  -- Use case: DR, Reporting,Dump, export
+  -- No reads/ writes from the app will come to this member but it will have always the updated data
+  -- Dump / export -- faster ; not yield to any incoming reads/writes
+
+4. Delayed Secondary:
+  -- Asynchronously Sync data from the primary but will a delay
+  -- Not Visible to the user
+  -- Priority = 0
+    -- Can never become the primary 
+    -- Alaways holds stale data based on delay time
+  -- Votes :1 or 0
+  -- Use case: Restore from accidental deletion, DR
+  -- Example -- sync with the primary after 24 hours 
+    -- Accidentally delete of a collection at 12pm ; 
+
+Arbiter:
+  -- Will not sync with the primary
+  -- Will not hold any data
+  -- Priority :0
+    -- Never should become the primary
+  -- Votes :1
+  -- To take part in the election and vote
+
+
+3 servers -- secondary members
+There is no primary
+-- Election will be triggered
+-- To find a primary
+
+Among all the members
+	-- eligible set of secondary which can become the primary
+		-- priority >=1
+		-- have the most synched data 
+
+Election process
+	-- One of the eligible secondary will call for the election
+	-- All the voting members will vote
+	-- Whichever eligible secondary has the max votes(majority) becomes the primary
+	-- Eligible secondary member will vote for themselves
+
+5 member replica set
+	-- majority to win : 3
+Name Of Node; Prority, Voting Power
+N1 P2 V1
+N2 P0 V1
+N3 P4 V1
+N4 P1 V1
+N5 P2 V1
+
+First time , the replica set is initialised
+N1 to N5  -- secondary members
+No Primary -- election is triggered 
+Election starts -- who all can Vote in the election- N1,N2,N3,N4,N5;
+Eligible Secondary : N1, N3, N4, N5
+5 MEMBERS voted; Votes in hand :5, Number of votes required to become the winner --3
+Voting member -- Vote for a member based on factors like priority, how much it has synched, healthy/ unhealthy, configurations
+
+Winner of the election : N3( Because it would have received the majority of votes)
+
+N3 -- Primary
+N1, N2, N4, N5 -- secondary
+
+Members of replica set :
+	-- Configure the priority and voting power
+	-- Basis of configuration
+		
+Scenario 
+	-- Distributed app -- read intensive app; reads from the entire world, major traffic from India and Australia
+	-- faster reads, low latency
+	-- 5 servers in different locations
+		-- BLR, PUNE
+		-- Sydney, Melbourne
+		-- New York
+	-- Primary server -- Reads and writes (Only one to handle the writes)
+		-- Should server in New York become the primary
+NewYork -- P0
+Blr, Sydney -- P5
+Pune, Melbourne -- P3
+
+System configuration
+	-- Since the newYork will only be a secondary during its entire lifetime -- min configuration so that it can handle the reads
+	-- Best configurations : BLR, Sydney
+	-- Good configuration : Pune, Melbourne
+
+Writes coming to app
+	Driver : sends the writes to primary
+	
+Reads coming to app
+	Driver : default sends the reads to primary
+		-- Configure -- reads to secondary
+
+Write op: write concern
+Read op: read preference
+Consistency
+Oplog
+
+Synchronisation process:
+	Write op 
+		-- primary will add it as a doc with a write query to a special capped collection called as oplog. Execute the query in the primary
+		-- Secondaries will have to sync asynchronously
+		-- Each secondary may do it at a different timeline
+		-- Secondary will copy the docs from the primary's oplog from the last point it has synched to the current time and add to its own oplog. Execute the oplog entries which it has appended
+N1, N5 ; 
+Primary:N3
+		
+
+
+
+Write concern : {w:number/majority}
+	-- Number any positive number greater than 0 but less than equal to total number of members in the replica set
+
+Write operation:
+	-- Sent to the primary
+		-- Find the write concern
+			-- {w:1}
+				-- Only one member in the replica set have to complete the write op to send a successful acknowledgement to the user
+				-- primary will complete the write and ack will be sent to the user;
+				-- secondaries will async sync with the primary
+				-- Not a best practice
+				-- Problems: Initially the salary was 1000;updating a doc with empId:101, salary:2000
+					1. Read for empId:101
+						If the read goes to primary -- fresh data
+						If the read goes to synched secondary -- fresh data
+						If the read goes to unsynched secondary -- stale data
+						write N3 ; n1,n2 -- synched; n4,n5 have not yet synched
+						read n1 -- salary : 2000
+						read n4: -- salary : 1000
+						
+					2. primary has completed write; ack be sent to the user; 
+						-- none of the secondaries have synced yet and primary goes down
+						-- election will be triggered; another member will become primary
+						-- data insertion -- will be lost; user's perspective -- data is inserted
+						-- create problems with persistence
+			
+					
+
+			-- {w:2} ,{w:3}, {w:n}-- Not recommended
+			-- {w:majority}
+				-- Majority of data bearing members should have completed the write operations in their respective servers and then only the ack will be sent to user
+				-- 5 members ; n3 -- primary; majority:3
+				--  Initially the salary was 1000;updating a doc with empId:101, salary:2000
+				-- 3 members will have to complete the write before the ack can be sent
+					-- n3 for sure , assume n1,n4 have completed the writes in the respective server, ack will be sent; And then other members will async sync
+				-- Adv : No data loss; chances of reading stale data -- minimum(2 of 5 may have stale data)
+				-- Disadv : Time consuming query
+
+
+
+As a DBA what is ur higher priority
+	-- Data protection or slower queries
+		--Data protection
+				
+	-- Data protection or redundancy
+		-- data protection
+	-- Data protection or Consistency
+		-- data protection
+
+Can I achieve full consistency
+	-- Yes
+		-- write concern {w:n}; n is total number of members in replica set
+		-- all the members of replica set complete the write op and then the ack is sent
+		-- Disadv : Time consuming -- 5 members have to complete
+			-- Availability becomes a question
+				-- Lets say a secondary is down. 4 of 5 nodes are up; write will be never ack till all have completed. No;writes will fail
+
+
+CAP : Mongodb : AP; Eventual consistency
+
+Read op --> driver --> knows who is the current primary, config of replica set; (reads can go to secondary or not); , tags, load, --> driver will select the best member to handle the read
+
+
+write op --> driver --> {w:majority} --> send the write to n3; sec will start syncing; driver will wait for primary and 2 of sec; once 3 complete , the driver will give the ack back
+
+
+Hands on
+3 member replica set:
+
+Server
+	-- dbpath, host, port, log, replSetName, ubuntu -- forked process
+
+Example:
+On the desktop folder -- create a folder -- replication
+Inside the replication folders -- create 3 folders -- data1, data2, data3
+
+Create 3 configuration mongod1.conf, mongod2,conf, mongod3.conf
+				
+
+Replication
+election timeout -- 10 seconds
+chainingAllowed : true
+	-- Secondaries can sync from another fully synced secondary
+
+
+Exercise:
+Make the primary down
+	-- rs.stepDown() -- Gracefully make the primary down
+	-- kill the server -- server is down/ network down
+
+Election will occur
+	-- Replica set is initiaited
+	-- Primary goes down
+	-- Configuration details are changed
+
+Synchronisation 
+	-- Can be from primary or another fully synced secondary(chainingAllowed)
+	-- Initial sync
+		-- Full sync with the primary
+	-- Incremental sync
+		-- Sync from the primary from the last point it has synced upto
+
+Oplog
+	-- Special Capped collection 
+		-- Restriction on size of collection and number of docs in the collection
+	-- Each member has its own oplog,and access rs.status() and rs.config()
+	-- Oplog should not keep growing
+	-- When the size or number reaches a threshold value -- auto delete the first few docs
+	
+Primary's oplog 
+	-- 20gb of info
+Adding a new member 
+	-- Sync entire 20gb
+Already a member
+	-- trying to sync
+	-- window which it has to sync
+		-- Scenario 1: window is available in primary
+			-- incremental sync
+		-- One of secondaries was down for a long time -- primary's oplog has got rotated
+			-- will it be able to copy from primary's oplog -- NO 
+			-- will it be able to copy from secondary's oplog -- NO 
+			-- DBA -- mongodump and restore/ file system copy 
+
+
+
+Read Preference:
+	Default, Primary,primary preferred, secondary, secondary preferred, nearest
+Whenever there is a read from india, the 2 servers in india should handle them
+	-- readPreference -- nearest
+	-- readPreference -- primary -- Only primary will be able to handle the reads
+	-- readPreference -- primaryPreferred -- First try to read from primary, but if primary is unavailable read from secondary
+	readPreference -- secondary -- Only secondaries will be able to handle the reads
+	readPreference -- secondaryPreferred -- First try to read from secondaries, but if sec is unavailable read from primary
+
+
+local database
+	-- lot of collections related to replica set
+	-- oplog.rs
+
+data1, data2, data3
+
+port : 2001, 2002, 2003
+
+Change in mongod1.conf:
+1. change the dbpath
+2. change the log path :
+3. change the port number to 1001
+4. add fork:true under processManagement
+5. Uncommented replication
+6. Added replSetName: rs1 under replication
+YAML rules : 
+1. After colon , one space
+2. Any subfield -- 2 spaces before field name
+
+
+Sample mongod1.conf
+# mongod.conf
+
+# for documentation of all options, see:
+#   http://docs.mongodb.org/manual/reference/configuration-options/
+
+# Where and how to store data.
+storage:
+  dbPath: /home/student/Desktop/replication/data1/
+#  engine:
+#  wiredTiger:
+
+# where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  path: /home/student/Desktop/replication/data1/mongod.log
+
+# network interfaces
+net:
+  port: 2001
+  bindIp: 127.0.0.1
+
+
+# how the process runs
+processManagement:
+  fork: true
+  timeZoneInfo: /usr/share/zoneinfo
+
+#security:
+
+#operationProfiling:
+
+replication:
+  replSetName: rs1
+
+#sharding:
+
+## Enterprise-Only Options:
+
+#auditLog:
+
+
+Start the servers:
+OPen a terminal
+mongod --config /home/student/Desktop/replication/mongod1.conf
+
+mongod --config /home/student/Desktop/replication/mongod2.conf
+
+mongod --config /home/student/Desktop/replication/mongod3.conf
+Check if the servers are up:
+
+ps -ef | grep mongod
+
+In the terminal
+
+mongosh --port 2001
+
+rs.initiate({
+  _id:"rs1",
+  members:[
+    {_id:0, host:"localhost:2001"},
+    {_id:1, host:"localhost:2002"},
+    {_id:2, host:"localhost:2003"},
+  ]
+})
+
+Ok:1
+
+Trigger the election
+Congigure the priority and vote -- default configuration
+rs.status()
+rs.config()
+
+rs.printReplicationInfo()
+rs.printSecondaryReplicationInfo()
+
+
+Add a member to an existing replica set -- zero priority,  voting member
+1. Create a data4 folder and mongod4.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2004",priority:0, votes:1})
+
+
+Add a member to an existing replica set -- hidden member (votes :0 or 1)
+1. Create a data5 folder and mongod5.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2005", hidden:true, priority:0,votes:0 })
+
+Add a member to an existing replica set -- delayed member delay by 1 hour (votes :0 or 1)
+1. Create a data6 folder and mongod6.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2006", secondaryDelaySecs: 3600 ,priority: 0,votes:1})
+
+Add an arbiter to an existing replica set --
+will not hold any data
+1. Create a data7 folder and mongod7.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.addArb({"localhost:2007");//prioity :0; votes : 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Add a member to existing replica set:
+rs.printReplicationInfo()
+rs.printSecondaryReplicationInfo()
+
+
+Add a member to an existing replica set -- zero priority,  voting member
+1. Create a data4 folder and mongod4.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2004",priority:0, votes:1})
+
+
+Add a member to an existing replica set -- hidden member (votes :0 or 1)
+1. Create a data5 folder and mongod5.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2005", hidden:true, priority:0,votes:0 })
+
+Add a member to an existing replica set -- delayed member delay by 1 hour (votes :0 or 1)
+1. Create a data6 folder and mongod6.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.add({host:"localhost:2006", secondaryDelaySecs: 3600 ,priority: 0,votes:1})
+
+Add an arbiter to an existing replica set --
+will not hold any data
+1. Create a data7 folder and mongod7.conf
+2. Start the server
+3. Add it to replica set
+  Connect to primary from mongosh
+rs.addArb({"localhost:2007");//prioity :0; votes : 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
