@@ -1,0 +1,228 @@
+Sort Order :
+	-- For simple index 
+		-- Sort order is not important
+	-- For Compound index 
+		-- Sort order is important
+			-- Exact Same or exact inverse -- Index is used
+
+Rebuild Indexes
+	-- Manually
+	-- 
+
+Unique 
+Sparse
+Partial filter expression 
+ttl
+
+Query to use a particular index
+
+db.zipcode.find({state:/^a/i}).hint({state:1,city:-1}).explain()
+
+
+Unique index
+db.restaurant.createIndex({restaurant_id:-1},{unique:1})
+
+Sparse index
+	-- Index only those docs which only have the indexed field and indexed field is null
+db.students.createIndex({marks:-1},{sparse:true})
+	// Multi key index and sparse index
+db.students.createIndex({loc:-1},{sparse:true});
+// if loc is a string ; simple sparse index
+
+Partial filter expression
+	-- Filter conditions supports only certain operations
+db.employee.createIndex({salary:-1},{name:"partialSalaryWithSalaryCheck",partialFilterExpression:{salary :{$gt:5000}}})
+// Will index all the docs based on salary which have a salary > 5000
+
+db.employee.createIndex({salary:-1},{partialFilterExpression:{empName :/a$/i, name:"partialSalaryWithNameCheck"}})
+// Will index all the docs based on the salary where the doc has an empName ending with "a" -- Index will not be created becaues regex are not supported
+
+db.employee.createIndex({salary:-1},{partialFilterExpression:{empName :"tara", name:"partialSalaryWithNameAsTara"}})
+// Will index only those 5/13 docs with name as "tara"
+// Binary tree index entries : based on salary;
+//
+
+
+db.employee.find({salary:{$gt:10000}}); // partialSalaryWithSalaryCheck
+db.employee.find({salary:{$gt:1000}}); // COLLSCAN
+// Plan 1: Collscan
+// plan 2: try to fetct >5000 from index and then 1000 to 5000 by doing collscan
+// plan 2 -- rejected plan
+
+
+db.employee.find({salary:{$lt:10000}}); // COLLSCAN
+
+
+db.employee.find({empName:"tara"});// Query doesnot have the indexed field -- No partial index usage
+db.employee.find({empName:{/a$/i}});// Query doesnot have the indexed field -- No partial index usage
+
+db.employee.find({salary:{$gt:10000}});// Not use this index:partialSalaryWithNameAsTara
+db.employee.find({salary:{$gt:10000},empName:"tara"});// partialSalaryWithNameAsTara
+db.employee.find({salary:{$gt:10000},empName:/a$/});// Will not use the index because there can be other docs like sita which ends with a and which may be in the index
+
+db.collName.getIndexes()
+db.collName.dropIndex({name:"partialSalaryWithNameAsTara"})
+
+
+
+TTL Index :
+	--Total time to live index
+  -- Index can delete docs
+  	-- Delete docs for which the expiresIn time in seconds has expired from the indexed field
+  -- TTL index can be created only on date data type fields or arrays which have dates
+  -- Usecases
+  	-- Automatically delete some docs after a period of time
+    -- Session expiration
+    -- Logs rotation
+  
+  
+db.bankingSession.insertMany([
+	{sessionId:101,timeStart:new Date(2026,9,05)}
+  {sessionId:102,timeStart:new Date(2025,2,2)}
+  {sessionId:103,timeStart:new Date(2026,2,2)}
+  {sessionId:104,timeStart:new Date(2027,2,2)}
+  {sessionId:105,timeStart:new Date(2026,9,05,17)}
+])
+
+db.bankingSession.createIndex({timeStart:1},{expiresIn:300})
+var today = new Date();//today's date
+
+
+Hashed Index :
+	db.employee.createIndex({employeeId:"hashed"})
+  -- Simple index or compound index
+  -- Can create only using shell
+  -- Mainly used with sharding
+  -- Usually created on fiels which change monotonically like ObjectId or timestamp 
+  -- Try to evenly distribute the data 
+  -- Work
+  	-- indexed field value --> sent to a hash algorithm -- give a hashed value of this indexed field -- hashed value becomes the index entry
+    -- Query which comes on the hashed field --> convert the query' condition to a hash value -- hash values will be compared -- based on the result set will be formed
+  
+Text Indexes
+	-- Can be simple or compound
+  -- Only one text index per collection
+  -- Big index 
+  -- Text indexes are used only when the query contains $text query
+  
+db.restaurant.find({
+	$text:
+  	{$search: "bake"}
+})
+
+
+How are indexes created
+
+Replication and sharding
+
+Database tools:
+	-- Monitoring
+  	-- Disk usage, server status, memory, cpu, locks , deadlocks
+  -- Backups and restore
+  -- Maintanence jobs
+  -- Schedule jobs/tasks
+  -- Log Rotation/ maintanence
+  -- Upgrades/ downgrades ; versions/patches
+  -- Mongo import / export 
+  -- auth and authorisation
+  -- Profiler
+  
+Import/export
+	-- collection level process
+  
+What all can be exported from a collection
+	-- fields
+  -- docs
+  -- Index -- NO
+  -- json/csv
+  -- Loss of data (conversion from BSON to csv)
+  
+  
+Backup/restore
+mongodump 
+mongo restore
+	-- Data stored in disk -- .wt files
+  	-- Collection and Indexes -- .wt files
+	-- database/ collection/ query level
+  -- 
+  
+Mongoexport or mongodump
+	-- what is requirememt
+  	-- data migration or backup from which u want to restore
+    -- 
+Restaurants.json -- same data 
+Export the indexes -- No
+export the data -- yes
+mongo export
+
+Sample db and collections
+send this db -- testing environment -- export the data 
+
+Production environment -- DBA -- disaster recovery
+Problem -- accidental deletion of collection
+import or restore ? Restore -- Get back both the data and its associated indexes in shortest period
+
+Accidentanly deleted the restaurant collection
+Docs 
+	-- restaurants.json
+  -- Mongo dump of restaurant collection
+
+Should run mongorestore
+	-- Restaurant had 5 indexes
+  -- restore the collection (and indexes)
+  -- mongo import -- restore both(data and indexes) -- NO
+  -- mongo restore 
+Dump of entire deployment
+mongodump --uri="mongodb://localhost:27017" 
+// Create a dump directory with the entire deployment in pwd
+
+Restore a particular collection
+mongorestore --uri="mongodb://localhost:27017" --db="skillverse" --collection="restaurant" dump/skillverse/restaurant.bson
+// Restore the collections and its respective indexes
+
+mongorestore --uri="mongodb://localhost:27017" --db="skillverse" --collection="restaurant" dump/skillverse/restaurant.bson
+
+Collection -- backup is huge
+Parallel Processing:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
