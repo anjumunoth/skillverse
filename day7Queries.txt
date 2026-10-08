@@ -1,0 +1,423 @@
+Reconfiguring in a replica set
+First connect to the primary member
+mongosh --port 2003
+
+var configInfo=rs.config();
+configInfo.members[2].priority=5
+rs.reconfig(configInfo);
+
+// Change the configuration; Trigger an election
+
+var fruits=["apple","banana","strawberry"]
+fruits[1]="kiwi"
+
+Change the priority to 15 of member running in port:2001
+var configInfo=rs.config();
+configInfo.members[0].priority=15
+rs.reconfig(configInfo);
+//  Change the configuration; Trigger an election; 2001 will become the primary
+
+rs.printSecondaryReplicationInfo()
+
+Configuration file: YAML file
+Predefined fields 
+	-- replSetName: rs1
+  
+  
+Back up of replica set:
+
+1. Fully synced secondary -- backup
+	-- Adv : 
+  	--Will not affect the writes
+    -- Even reads are not affected (hidden)
+  -- Disadv
+  	-- During the backup window -- writes may not be backed up
+  
+2. Primary -- backup
+	-- Adv : 
+  	-- Full consistent backup
+  -- Disadv:
+  	-- More load on the primary
+    -- Performance of read and write may deterioate
+    -- More time consuming (yield to incoming writes and reads)
+    -- During the backup window -- writes may not be backed up (inconsistency)
+  
+3. Fully synced secondary -- backup 
+	-- Backup : data from fully secondary synced and oplog
+  	-- All the data 
+    -- oplog : entries which happened during backup window
+  -- Restores
+  	-- Dump -- get all the data
+    -- Oplog -- write entries happpened during backup -- execute them -- consistent data restored
+Back up replica set : Scenario 3  
+
+
+Backup
+On the first day of every month : full backup
+Every day : Incremental backup
+
+Local deployment 
+	-- Full + incremental
+  
+Incremental backup or PITR
+	-- mongo dump -- Not possible
+  -- Ops manager
+  	-- official tool -- create deployement, monitor, backup, PITR
+  -- Mongo Atlas 
+  	-- create deployement, monitor, backup, PITR
+    
+Backup/ restore
+	-- mongodump
+  -- OPS manager
+  -- Atlas
+  -- Filesystem snapshot
+  
+  
+10:00 -- Full Backup
+write queries ...
+
+1:00 : server is down
+
+Standalone server 
+	Oracle-- DBA -- full backup ; last incremental backup -- restore
+Requirement -- High Availability
+Replica set -- 
+
+
+Mongodb :
+Standalone server -- CP
+	-- Atlas, Ops Manager
+  	-- Incremental backup + PITR
+Wired tiger storage Engine
+Cache + Checkpoint+ Journal
+
+read operation --> query engine --> execution plan --> based on winning plan ->check if the data is present in cache
+	-- cache hit -- return the data to user
+  -- cache miss -- fetch the data from the disk -> store the data in the cache (if needed eviction)--> send data to the user
+  
+Write operation -- write gets executed + persisted
+write operation --> query engine --> store the data in the cache --> every 60 secs --> flush the data to the disk--> persisted
+cache --> checkpoints --> dirty page(modified pages)--> flush the dirty pages to disk
+every 60 sec , a checkpoint is created and flushed to the disk
+Journal -- write ahead log -- first write op is written to journal, then the write operation goes to the cache 
+Journal is also pushed to the disk;
+
+checkpoint created at 10:25:00
+Write Operation: 10:25:05
+Cache -- dirty page;
+10:25:35 abrupt server shutdown -- problem: cache will get cleared; dirty pages -- lost; 
+last 35 seconds writes will get lost because the cache got cleared
+
+Lose 60 seconds -- write intensive app -- NO
+
+Journal -- before write can happen, the operation is added to the journal
+
+10:25:35 -- abrupt shutdown
+Checkpoint : 10:25:00 (last checkpoint before the shutdown )
+Play the journal entries from 10:25:00 to 10:25:35
+-- All the data is restored
+
+Journal -- Persisted -- every 100ms/ size of journal file reaches 100 mb of data
+
+Loss of data -- max of 100ms -- writes may be lost
+
+Journal and checkpoints are features of wired tiger storage engine.
+Each server(standalone, member of replica set ) which uses wr storage engine -- will have these features
+
+1. Replica sets:
+	Should have only 1 primary
+  All the writes can be handled by primary
+
+Replica set
+write --> journal --> cache --> index entries --> --> oplog-->-->{write concern}--> ack --> persisted
+
+Automatic failover 
+	-- shutdown one server -- election triggered -- another eligible secondary became primary
+  
+Oplog 
+	-- contains all write entries
+  -- cap on size / number of docs
+  -- special capped collection
+  -- reaches a threshold -- automatically delete the docs
+  -- size of oplog matters 
+  	-- configure
+    -- mongod.conf 
+  -- factors governing size of oplog
+  	-- sync of other members, replication lag, number of writes happening in the app, DR -- oplog based restoration
+  
+Storage engine
+	-- wired tiger
+  -- in memory storage 
+  	-- available only as part of enterprise server
+    -- faster reads/ writes -- everything is available in memory
+    -- if system shutdown/ reboot -- entire data is lost
+    -- no persistence
+    -- Use case : session data, very frequent reads (product lists)
+    
+    
+Replication:
+	-- Can we have multiple write servers -- NO
+Amazon prime day sales
+-- Reads more -- Handle -- Scale up -- Increase the number of readable secondaries
+-- Writes more -- more orders 
+	-- Increase the resources of the primary -- Not feasible
+  	-- Is a particular node always the primary -- NO
+  -- Clustering 
+  	-- Storage -- 1 server ; this server is down -- no reads/ no writes -- not feasible  
+
+Database size :
+	Huge database
+  -- database doesnt fit in a single server
+  	-- Break up the data and store in multiple servers
+
+Need for sharding :
+	-- Write intensive app (scale up the write op) -- multiple write servers
+  -- Big data base -- break up and store
+	-- When majority of my queries are based on shard key
+
+Multiple write servers
+	-- write intensive app
+  -- writes faster
+
+Laptop
+	-- Photos, videos, docs, project related docs
+Organise 
+	-- Create 2 folders -- personal, projects.
+  In personal folders -- photos,videos, docs
+  -- Easy to access, store , secure
+Excel -- which is at what location
+
+Sharding 
+	-- Shard key 
+  -- Based on shard key, the data is distributed among the different servers
+  -- Mongos, shard key, shard servers, config server
+  -- Data stored in shard servers
+  -- Excel (which is at what location ) -- config server
+  -- Mongos -- stateless router 
+  -- Shard server and config server -- always replica sets
+replica set -- number of servers (mongod deamon servers)
+
+Sharding
+	-- range based sharding
+  -- hashed based sharding
+  
+Employee -- 10 lakh emp
+empId: number data type -- sequential 
+empName, salary, address....
+
+Store the data -- 3 shards and each shard has a PSS architecture 
+Range based sharding based on empId as shard key
+shard1 : minkey to 3 lakhs
+shard2 : 3lakhs to 7 lakhs
+shard3 : 7 lakhs to max key
+
+configserver :
+{shard1: data from minkey to 3 lakhs}
+{shard2: data from 3 lakhs to 7 l}
+{shard3: data from 7 lakhs to maxkey}
+
+read query
+select * from employee where empId> 8l
+
+read query -->driver --> mongos router --> ask config server for the shard in which data is located-> config server will return the shard details to mongos
+-> mongos will directly connect to shard3 --> fetch data --> return to user
+
+read query
+select * from employee where empId in range 4l to 9l
+read query -->driver --> mongos router --> ask config server for the shard in which data is located-> config server will return the shard details to mongos
+-> mongos will directly connect to shard2 and shard3 --> fetch data from multiple shards--> merge the data --> return to user
+
+
+
+read query
+select * from employee where salary > 5000
+read query -->driver --> mongos router --> query is not based on shard key->
+-> mongos will broadcast the query to all the  shards --> fetch data from multiple shards--> merge the data --> return to user
+
+Basis of selection of shard key
+	-- Majority of queries should be based on shard key
+  -- Cardinality
+  --	High cardinality -- many unique values
+
+write query
+db.employee.insertOne({empId:234,empName:"sara",salary:5678})
+write query -->driver --> mongos router --> ask config server for the shard in which data should be inserted-> config server will return the shard details to mongos
+-> mongos will directly connect to shard1 --> save data in that shard-> return an ack to user
+
+Hash based sharding:
+	-- Shard key --> send it hashing algorithm --> hashed value --> store it in a particular shard server
+  -- Fields -- Even distribution of data
+  	-- Timestamps, ObjectId
+  
+  
+Chunks
+-- Collection of docs
+	-- Contiguous range of shard key values within a shard
+  -- Lower and Upper boundary
+  -- Default size : 128mb
+  -- Grow beyond the default size
+  	-- Automatic split
+  -- Manual split of chunk -- possible
+  -- Balancer 
+  		-- Distribute data among the various chunks in the various shards
+      -- Enable / disable
+      
+shard1 : minkey to 3l
+shard1 :
+	chunk1 : minkey to 1l
+  chunk2: 1l to 1.5l
+  chunk3: 1.5l to 3l
+
+2 parallel reads 
+read for empId:500 empId:1.4l
+
+Hands On
+Architecture
+2 shards (PSS)
+1 config server (PSS) 
+1 mongos router
+
+Create a sharding folder
+Create 3 folders called shard1, shard2 and cs
+Inside each of these folders , create 3 folders : data1... data9
+Shard1:
+	Create 3 files : mongod1.conf, mongod2.conf, mongod3.conf
+  dbpath : data1, data2, data3
+  port : 3001, 3002, 3003
+  replSetName: shard1rs
+  log
+  fork:true
+  sharding:
+    clusterRole: "shardsvr"
+Start the servers:
+mongod --config "path to mongod1.conf"
+Same way start the rest 2 servers as well    
+
+
+Shard2:
+	Create 3 files : mongod4.conf, mongod5.conf, mongod6.conf
+  dbpath : data4, data5, data6
+  port : 3004, 3005, 3006
+  replSetName: shard2rs
+  log
+  fork:true
+  sharding:
+    clusterRole: "shardsvr"
+Start the servers:
+mongod --config "path to mongod4.conf"
+Same way start the rest 2 servers as well    
+
+Config server cs:
+	Create 3 files : mongod7.conf, mongod8.conf, mongod9.conf
+  dbpath : cs/data7, cs/data8, data9
+  port : 3007, 3008, 3009
+  replSetName: csrs
+  log
+  fork:true
+  sharding:
+    clusterRole: "configsvr"
+Start the servers:
+mongod --config "path to mongod7.conf"
+Same way start the rest 2 servers as well    
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+
+	
+
+
+
+    
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+	
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
