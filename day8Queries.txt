@@ -1,0 +1,176 @@
+Sharding
+-- Created 2 replica sets -- 2 shard servers
+-- Created 1 replica set -- 1 config servers
+
+Open a terminal 
+
+Connect to one of the members in shard1
+mongosh --port 3001
+
+rs.initiate({
+_id:"shard1rs",
+members:[
+{_id:0, host:"localhost:3001", priority: 5},
+{_id:1, host:"localhost:3002"},
+{_id:2, host:"localhost:3003"},
+]
+})
+
+Connect to one of the members in shard2
+mongosh --port 3004
+
+rs.initiate({
+_id:"shard2rs",
+members:[
+{_id:0, host:"localhost:3004"},
+{_id:1, host:"localhost:3005",priority:5},
+{_id:2, host:"localhost:3006"},
+]
+})
+
+Connect to one of the members in config server
+mongosh --port 3007
+
+rs.initiate({
+_id:"csrs",
+members:[
+{_id:0, host:"localhost:3007"},
+{_id:1, host:"localhost:3008"},
+{_id:2, host:"localhost:3009",priority:2},
+]
+})
+
+Set up the mongos router
+Port : 3500
+mongos --port 3500 --configdb csrs/localhost:3007
+Dont close this terminal
+
+In a new terminal
+Now connect to mongos router
+mongosh --port 3500
+
+sh.addShard("shard1rs/localhost:3001")
+sh.addShard("shard2rs/localhost:3004")
+
+sh.status()
+
+Shard a particular collection
+1. Enable sharding at the database level
+sh.enableSharding("shardingDb")
+2. Shard the zipcode collection
+Select the shard key
+	-- Shard key should be an indexed field in asc order
+  
+sh.shardCollection("shardingdb.zipcode",{state:1})
+
+sh.splitAt(namespace, query)
+Splits a chunk at the shard key value specified by the query.
+sh.splitAt("shardingDb.zipcode",{state:"NH"})
+
+sh.splitFind(namespace, query)
+Splits the chunk that contains the shard key value specified by the query at the chunk's median point. sh.splitFind() creates two roughly equal chunks. 
+sh.splitFind("shardingDb.zipcode",{state:"VT"})
+
+sh.moveChunk(namespace, query, destination)
+Moves the chunk that contains the document specified by the query to the destination shard. sh.moveChunk() provides a wrapper around the moveChunk database command.
+sh.moveChunk("shardingDb.zipcode",{state:"NY"},"shard1rs")
+
+
+
+Range based sharding
+sh.shardCollection("shardingdb.zipcode",{state:1})
+
+Hash based sharding
+	-- Create  a hashed index on shard key 
+sh.shardCollection("shardingdb.restaurant",{restaurant_id:"hashed"})
+
+Replica set related collections in the data base -- local database
+Sharding related collections are present in the database -- config database
+
+
+Security:
+1. Encryption
+	-- At transit
+  -- At Rest
+  
+Encrytion at rest
+	-- Store the encrypted data
+  	-- Encrypt
+    	-- data
+      -- index entries
+      -- journal
+      -- cache 
+      -- logs 
+      -- dumps/ backup
+      
+      
+Security
+ -- Encryption(Rest and transit)
+ -- Authentication and authorisation
+ -- Auditing
+ -- Network connections and firewalls; IPBinding
+ -- Monitoring Logging
+ --
+ 
+Authentication and authorisation
+	Authentication -- who are you
+  Authorisation -- what all can u do
+  	-- role, permissions/ grants
+  
+LDAP authentication
+
+Authorisation 
+	-- RBAC
+  	-- Users
+    -- Assign roles to the users
+    -- Grant permission to the roles/users
+    
+    
+Role: Assigned to user
+	: Has a set of permissions
+  -- Predefined roles
+  -- Custom Roles
+  -- Inherit Roles
+  
+Permissions
+	-- Collections
+  -- Database
+  -- Cluster
+  -- Deployment 
+  
+  use test
+db.updateUser(
+   "user123",
+   {
+      pwd: passwordPrompt(),  // or cleartext password
+      customData: { title: "Senior Manager" }
+   }
+)
+  
+
+
+
+
+
+
+
+
+	
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+
+
+
+
+
+
