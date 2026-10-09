@@ -1,0 +1,4 @@
+Re-enable the balancer
+Using mongosh, connect to a mongos in the cluster and run sh.startBalancer() to re-enable the balancer:
+
+sh.startBalancer()
